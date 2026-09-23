@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Números WhatsApp por BM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#EEF2F3; --surface:#FFFFFF; --ink:#16242A; --muted:#5B6B72; --line:#D5DEE1;
+  --brand:#0E4F5C; --brand-ink:#FFFFFF; --soft:#E3ECEE; --hover:#F3F7F8;
+  --ok:#1E7A4F; --ok-bg:#DDF2E6; --warn:#8A6400; --warn-bg:#FBEFC9; --bad:#A93226; --bad-bg:#F8DEDA;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1A1E; --surface:#16252B; --ink:#E4ECEE; --muted:#93A5AC; --line:#2A3C43;
+    --brand:#4FB3C3; --brand-ink:#062228; --soft:#1D3038; --hover:#1B2D33;
+    --ok:#6FD3A0; --ok-bg:#16372A; --warn:#E9C261; --warn-bg:#3A3015; --bad:#F08A7E; --bad-bg:#3D1F1C;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1A1E; --surface:#16252B; --ink:#E4ECEE; --muted:#93A5AC; --line:#2A3C43;
+  --brand:#4FB3C3; --brand-ink:#062228; --soft:#1D3038; --hover:#1B2D33;
+  --ok:#6FD3A0; --ok-bg:#16372A; --warn:#E9C261; --warn-bg:#3A3015; --bad:#F08A7E; --bad-bg:#3D1F1C;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
+main{max-width:1600px;margin:0 auto;padding:28px 20px 40px}
+h1{font-size:1.75rem;line-height:1.15;margin:0 0 6px;font-weight:700;letter-spacing:-.01em}
+.summary{color:var(--muted);margin:0 0 20px}
+.summary b{color:var(--ink);font-weight:600}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.toolbar .grow{flex:1 1 240px;min-width:0}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
+textarea{resize:vertical;min-height:64px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.toolbar select{width:auto;max-width:220px}
+button{font:inherit;font-weight:600;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);white-space:nowrap}
+button:hover{background:var(--hover)}
+button.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+button.primary:hover{filter:brightness(1.08)}
+button.danger{color:var(--bad);border-color:transparent;background:transparent}
+button[disabled]{opacity:.5;cursor:not-allowed}
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:calc(100dvh - 230px);min-height:320px}
+table{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{position:sticky;top:0;background:var(--soft);font-size:.8rem;font-weight:600;color:var(--muted);z-index:1}
+th.grp{border-left:2px solid var(--line)}
+td.grp{border-left:2px solid var(--line)}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:var(--hover)}
+tbody tr.newbm td{border-top:2px solid var(--brand)}
+td.name{font-weight:600}
+td.dim{color:var(--muted)}
+.idbtn{all:unset;cursor:copy;border-radius:4px;padding:1px 3px;margin:-1px -3px}
+.idbtn:hover{background:var(--soft)}
+.idbtn:focus-visible{outline:2px solid var(--brand)}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--soft);color:var(--muted)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)} .chip.warn{background:var(--warn-bg);color:var(--warn)} .chip.bad{background:var(--bad-bg);color:var(--bad)}
+.empty{padding:56px 20px;text-align:center;color:var(--muted)}
+.empty p{margin:0 0 16px}
+.empty .actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.notice{background:var(--warn-bg);color:var(--warn);padding:10px 14px;border-radius:8px;margin-bottom:14px;display:none}
+dialog{border:none;border-radius:12px;padding:0;background:var(--surface);color:var(--ink);width:min(760px,calc(100% - 24px));max-height:calc(100dvh - 32px)}
+dialog::backdrop{background:rgba(8,20,24,.45)}
+.dlg{padding:22px 22px 18px;overflow:auto;max-height:calc(100dvh - 32px)}
+.dlg h2{margin:0 0 16px;font-size:1.2rem}
+fieldset{border:none;margin:0 0 16px;padding:0}
+legend{font-weight:700;font-size:.95rem;margin-bottom:8px;padding:0;color:var(--brand)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 12px}
+label{display:block;font-size:.82rem;color:var(--muted);font-weight:500}
+label input,label select,label textarea{margin-top:4px}
+.dlg-actions{display:flex;gap:10px;align-items:center;margin-top:6px}
+.dlg-actions .sp{flex:1}
+.hint{font-size:.85rem;color:var(--muted);margin:-6px 0 14px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (max-width:640px){main{padding:18px 12px 32px}h1{font-size:1.4rem}.toolbar select{max-width:none;flex:1 1 45%}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Números WhatsApp por BM</h1>
+  <p class="summary" id="summary">Carregando…</p>
+  <div class="notice" id="notice"></div>
+
+  <div class="toolbar">
+    <input class="grow" id="q" type="search" placeholder="Buscar por cliente, número, ID…" aria-label="Buscar">
+    <select id="fCat" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select>
+    <select id="fCli" aria-label="Filtrar por cliente"><option value="">Todos os clientes</option></select>
+    <select id="fBm" aria-label="Filtrar por BM"><option value="">Todas as BMs</option></select>
+    <select id="fWaba" aria-label="Filtrar por WABA"><option value="">Todas as WABAs</option></select>
+    <select id="fQual" aria-label="Filtrar por qualidade">
+      <option value="">Qualquer qualidade</option><option value="ok">Alta</option><option value="warn">Média</option><option value="bad">Baixa</option>
+    </select>
+    <select id="fStatus" aria-label="Filtrar por status"><option value="">Qualquer status</option></select>
+    <button class="primary" id="btnRefresh">Atualizar</button>
+    <button id="btnExport">Exportar Excel</button>
+    <button id="btnConfig" title="Endereço do webhook e chave">Configurar</button>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="empty" hidden>
+      <p id="emptyMsg"></p>
+      <div class="actions" id="emptyActions"><button class="primary" id="btnConfig2">Configurar</button></div>
+    </div>
+  </div>
+</main>
+
+<dialog id="dlg">
+  <form class="dlg" id="form">
+    <h2>Conexão com o n8n</h2>
+    <p class="hint">Fica salvo só neste navegador.</p>
+    <div class="grid">
+      <label>URL do webhook<input name="url" type="url" required placeholder="https://n8n.atnctc.com.br/webhook/bms-numeros-whatsapp"></label>
+      <label>Chave<input name="chave" type="password" required autocomplete="off"></label>
+    </div>
+    <div class="dlg-actions" style="margin-top:16px"><span class="sp"></span>
+      <button type="button" id="btnCancel">Cancelar</button>
+      <button type="submit" class="primary">Salvar e atualizar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const T = {
+  qual:{GREEN:'Alta',YELLOW:'Média',RED:'Baixa',UNKNOWN:'Desconhecida'},
+  limite:{TIER_50:'50',TIER_250:'250',TIER_1K:'1K',TIER_2K:'2K',TIER_10K:'10K',TIER_100K:'100K',TIER_UNLIMITED:'Ilimitado'},
+  status:{CONNECTED:'Conectado',PENDING:'Pendente',FLAGGED:'Sinalizado',RESTRICTED:'Restrito',BANNED:'Banido',DISCONNECTED:'Desconectado',MIGRATED:'Migrado',DELETED:'Excluído',RATE_LIMITED:'Limitado',UNVERIFIED:'Não verificado',UNKNOWN:'Desconhecido'},
+  nome:{APPROVED:'Aprovado',AVAILABLE_WITHOUT_REVIEW:'Disponível sem revisão',PENDING_REVIEW:'Em revisão',DECLINED:'Recusado',EXPIRED:'Expirado',NONE:'Nenhum'},
+  bmv:{verified:'Verificada',not_verified:'Não verificada',pending:'Pendente',pending_submission:'Pendente',failed:'Reprovada',rejected:'Reprovada',expired:'Expirada'},
+  waba:{APPROVED:'Aprovada',PENDING:'Pendente',REJECTED:'Reprovada'},
+  plat:{CLOUD_API:'Cloud API',ON_PREMISE:'On-premise',NOT_APPLICABLE:'N/A'}
+};
+const tr = (map,v) => v ? (map[v] || map[String(v).toUpperCase()] || v) : '';
+const FIELDS = [
+  {key:'categoria', label:'Categoria'},
+  {key:'cliente', label:'Cliente', cls:'name'},
+  {key:'bm_nome', label:'BM', cls:'name', grp:true},
+  {key:'bm_id', label:'ID do portfólio empresarial', id:true},
+  {key:'bm_verificacao', label:'Verificação da BM', map:T.bmv},
+  {key:'waba_nome', label:'WABA', cls:'name', grp:true},
+  {key:'waba_id', label:'WABA ID', id:true},
+  {key:'waba_vinculo', label:'Vínculo'},
+  {key:'waba_status', label:'Status da WABA', map:T.waba},
+  {key:'numero', label:'Número', cls:'name', grp:true},
+  {key:'phone_number_id', label:'Número ID', id:true},
+  {key:'nome_verificado', label:'Nome verificado'},
+  {key:'status_nome', label:'Status do nome', map:T.nome},
+  {key:'qualidade', label:'Qualidade', map:T.qual, chip:true},
+  {key:'limite', label:'Limite de mensagens', map:T.limite},
+  {key:'status', label:'Status', map:T.status},
+  {key:'plataforma', label:'Plataforma', map:T.plat},
+  {key:'waba_namespace', label:'Namespace de templates', id:true, cls:'dim'},
+];
+const norm = s => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const $ = id => document.getElementById(id);
+const val = (r,f) => f.map ? tr(f.map, r[f.key]) : (r[f.key] ?? '');
+const store = { get(k){ try{return localStorage.getItem(k);}catch{return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch{} } };
+
+let rows = [], lastSync = null, loading = false;
+
+function toast(msg, ms=2600){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._h); toast._h=setTimeout(()=>t.classList.remove('show'), ms); }
+function notice(msg){ const n=$('notice'); n.textContent=msg; n.style.display = msg ? 'block' : 'none'; }
+function qualClass(v){ const n=norm(v); if(['green','alta'].includes(n))return 'ok'; if(['yellow','media'].includes(n))return 'warn'; if(['red','baixa'].includes(n))return 'bad'; return ''; }
+const cmp = (a,b) => String(a||'').localeCompare(String(b||''),'pt-BR',{numeric:true,sensitivity:'base'});
+const bmKey = r=>r.bm_id||r.bm_nome, wabaKey = r=>r.waba_id||r.waba_nome;
+
+(function(){ const h=$('thead'); FIELDS.forEach(f=>{ const th=document.createElement('th'); th.textContent=f.label; if(f.grp) th.className='grp'; h.appendChild(th); }); })();
+
+function filtered(){
+  const q=norm($('q').value), fcat=$('fCat').value, fc=$('fCli').value, fb=$('fBm').value, fw=$('fWaba').value, fq=$('fQual').value, fs=$('fStatus').value;
+  return rows.slice().sort((a,b)=>cmp(a.categoria,b.categoria)||cmp(a.cliente,b.cliente)||cmp(a.bm_nome,b.bm_nome)||cmp(a.bm_id,b.bm_id)||cmp(a.waba_nome,b.waba_nome)||cmp(a.numero,b.numero)).filter(r=>{
+    if(fcat && (r.categoria||'')!==fcat) return false;
+    if(fc && (r.cliente||'')!==fc) return false;
+    if(fb && bmKey(r)!==fb) return false;
+    if(fw && wabaKey(r)!==fw) return false;
+    if(fq && qualClass(r.qualidade)!==fq) return false;
+    if(fs && (r.status||'')!==fs) return false;
+    if(q && !FIELDS.some(f=>norm(val(r,f)).includes(q))) return false;
+    return true;
+  });
+}
+const isFiltering = () => ['q','fCat','fCli','fBm','fWaba','fQual','fStatus'].some(id=>$(id).value);
+function uniq(list,keyFn,labelFn){ const m=new Map(); list.forEach(r=>{const k=keyFn(r); if(k&&!m.has(k)) m.set(k,labelFn(r));}); return [...m.entries()].sort((a,b)=>cmp(a[1],b[1])); }
+function fillSelect(sel,entries,allLabel){ const cur=sel.value; sel.replaceChildren(new Option(allLabel,'')); entries.forEach(([v,l])=>sel.appendChild(new Option(l,v))); sel.value=entries.some(e=>e[0]===cur)?cur:''; }
+
+function render(){
+  fillSelect($('fCat'), uniq(rows,r=>r.categoria,r=>r.categoria), 'Todas as categorias');
+  const fcat=$('fCat').value, inCat=rows.filter(r=>!fcat||r.categoria===fcat);
+  fillSelect($('fCli'), uniq(inCat,r=>r.cliente,r=>r.cliente), 'Todos os clientes');
+  fillSelect($('fBm'), uniq(inCat,bmKey,r=>r.bm_nome||r.bm_id), 'Todas as BMs');
+  const fb=$('fBm').value;
+  fillSelect($('fWaba'), uniq(inCat.filter(r=>!fb||bmKey(r)===fb),wabaKey,r=>r.waba_nome||r.waba_id), 'Todas as WABAs');
+  fillSelect($('fStatus'), uniq(rows,r=>r.status,r=>tr(T.status,r.status)), 'Qualquer status');
+
+  const nums = rows.filter(r=>r.phone_number_id);
+  const s=$('summary'); s.replaceChildren();
+  if(rows.length){
+    const part=(n,sg,pl)=>{const b=document.createElement('b'); b.textContent=n; s.append(b,' '+(n===1?sg:pl));};
+    part(new Set(rows.map(bmKey).filter(Boolean)).size,'BM','BMs'); s.append(', ');
+    part(new Set(rows.map(wabaKey).filter(Boolean)).size,'WABA','WABAs'); s.append(' e ');
+    part(nums.length,'número','números'); s.append('.');
+  }
+  if(lastSync) s.append((rows.length?' ':'')+'Buscado na Meta em '+lastSync.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'.');
+  if(loading) s.append(' Buscando na Meta…');
+
+  const list=filtered(), frag=document.createDocumentFragment(); let prev=null;
+  list.forEach(r=>{
+    const row=document.createElement('tr'); row.style.cursor='default';
+    if(prev!==null && bmKey(r)!==prev) row.className='newbm'; prev=bmKey(r);
+    FIELDS.forEach(f=>{
+      const td=document.createElement('td'), v=val(r,f);
+      if(f.grp) td.classList.add('grp'); if(f.cls) td.classList.add(f.cls);
+      if(f.id && v){ const b=document.createElement('button'); b.className='idbtn'; b.textContent=v; b.title='Copiar'; b.addEventListener('click',()=>copy(v)); td.appendChild(b); }
+      else if(f.chip && v){ const c=document.createElement('span'); c.className='chip '+qualClass(v); c.textContent=v; td.appendChild(c); }
+      else td.textContent=v;
+      row.appendChild(td);
+    });
+    frag.appendChild(row);
+  });
+  $('tbody').replaceChildren(frag);
+
+  const configured = !!(store.get('bmw_url') && store.get('bmw_chave'));
+  $('empty').hidden = !!list.length;
+  $('emptyActions').hidden = configured;
+  $('emptyMsg').textContent = !configured ? 'Informe o endereço do webhook do n8n e a chave para buscar os números na Meta.'
+    : loading ? 'Buscando na Meta…' : rows.length ? 'Nenhum número corresponde à busca ou aos filtros.' : 'Nenhum dado ainda. Clique em Atualizar.';
+  $('btnExport').textContent = isFiltering() && list.length ? `Exportar ${list.length} em Excel` : 'Exportar Excel';
+  $('btnExport').disabled = !list.length;
+  $('btnRefresh').disabled = loading;
+  $('btnRefresh').textContent = loading ? 'Atualizando…' : 'Atualizar';
+}
+
+async function copy(v){ try{ await navigator.clipboard.writeText(v); toast('Copiado: '+v); }catch{ toast('Não foi possível copiar.'); } }
+
+async function refresh(){
+  const url=store.get('bmw_url'), chave=store.get('bmw_chave');
+  if(!url||!chave){ openConfig(); return; }
+  loading=true; render();
+  try{
+    const u=new URL(url); u.searchParams.set('chave',chave);
+    const res=await fetch(u.toString(),{cache:'no-store'});
+    if(!res.ok) throw new Error(res.status===500 ? 'O n8n recusou a chamada. Confira a chave e o token da Meta no workflow.' : 'O webhook respondeu com erro '+res.status+'. Confira se o workflow está ativo.');
+    const data=await res.json();
+    const body=Array.isArray(data)?data[0]:data;
+    if(!body || !Array.isArray(body.numeros)) throw new Error('A resposta do n8n veio num formato inesperado.');
+    rows=body.numeros; lastSync=body.atualizado_em?new Date(body.atualizado_em):new Date();
+    store.set('bmw_cache', JSON.stringify({rows, lastSync:lastSync.toISOString()}));
+    const erros=Array.isArray(body.erros)?body.erros:[];
+    notice(erros.length ? 'Algumas BMs não foram buscadas. '+erros.join(' | ') : '');
+    toast(erros.length ? 'Atualizado com avisos.' : 'Dados atualizados da Meta.');
+  }catch(e){
+    notice(e instanceof TypeError ? 'Não consegui acessar o webhook. Confira a URL e se o CORS do nó Webhook permite este endereço.' : e.message);
+  }finally{ loading=false; render(); }
+}
+
+function exportXlsx(){
+  if(!window.XLSX){ toast('O gerador de planilhas não carregou. Recarregue a página.'); return; }
+  const list=filtered(); if(!list.length) return;
+  const headers=FIELDS.map(f=>f.label);
+  const aoa=[headers, ...list.map(r=>FIELDS.map(f=>String(val(r,f))))];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols']=headers.map((h,i)=>({wch:Math.min(45,Math.max(h.length,...aoa.slice(1).map(r=>r[i].length))+2)}));
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:headers.length-1}})};
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Números');
+  const m=new Map(); list.forEach(r=>{ const k=(r.categoria||'')+'|'+(r.cliente||'')+'|'+bmKey(r)+'|'+wabaKey(r); if(!m.has(k)) m.set(k,{r,n:0}); if(r.phone_number_id) m.get(k).n++; });
+  const res=[['Categoria','Cliente','BM','ID do portfólio empresarial','WABA','WABA ID','Vínculo','Qtd. de números'], ...[...m.values()].map(({r,n})=>[r.categoria||'',r.cliente||'',r.bm_nome||'',r.bm_id||'',r.waba_nome||'',r.waba_id||'',r.waba_vinculo||'',n])];
+  const ws2=XLSX.utils.aoa_to_sheet(res); ws2['!cols']=[{wch:16},{wch:24},{wch:30},{wch:26},{wch:30},{wch:22},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Resumo por WABA');
+  const d=new Date(), stamp=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  XLSX.writeFile(wb,`numeros-whatsapp-bm-waba-${stamp}.xlsx`);
+}
+
+function openConfig(){ const f=$('form'); f.elements.url.value=store.get('bmw_url')||''; f.elements.chave.value=store.get('bmw_chave')||''; $('dlg').showModal(); }
+$('form').addEventListener('submit',e=>{ e.preventDefault(); const f=e.target; store.set('bmw_url',f.elements.url.value.trim()); store.set('bmw_chave',f.elements.chave.value.trim()); $('dlg').close(); refresh(); });
+$('btnCancel').addEventListener('click',()=>$('dlg').close());
+$('btnConfig').addEventListener('click',openConfig);
+$('btnConfig2').addEventListener('click',openConfig);
+$('btnRefresh').addEventListener('click',refresh);
+$('btnExport').addEventListener('click',exportXlsx);
+['q','fCat','fCli','fBm','fWaba','fQual','fStatus'].forEach(id=>$(id).addEventListener(id==='q'?'input':'change',render));
+
+try{ const c=JSON.parse(store.get('bmw_cache')||'null'); if(c){ rows=c.rows||[]; lastSync=c.lastSync?new Date(c.lastSync):null; } }catch{}
+render();
+if(store.get('bmw_url') && store.get('bmw_chave')) refresh();
+</script>
+</body>
+</html>
