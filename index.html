@@ -151,10 +151,8 @@ const FIELDS = [
   {key:'cliente', label:'Cliente', cls:'name'},
   {key:'bm_nome', label:'BM', cls:'name', grp:true},
   {key:'bm_id', label:'ID do portfólio empresarial', id:true},
-  {key:'bm_verificacao', label:'Verificação da BM', map:T.bmv},
   {key:'waba_nome', label:'WABA', cls:'name', grp:true},
   {key:'waba_id', label:'WABA ID', id:true},
-  {key:'waba_vinculo', label:'Vínculo'},
   {key:'waba_status', label:'Status da WABA', map:T.waba},
   {key:'numero', label:'Número', cls:'name', grp:true},
   {key:'phone_number_id', label:'Número ID', id:true},
@@ -255,7 +253,9 @@ async function refresh(){
     const u=new URL(url); u.searchParams.set('chave',chave);
     const res=await fetch(u.toString(),{cache:'no-store'});
     if(!res.ok) throw new Error(res.status===500 ? 'O n8n recusou a chamada. Confira a chave e o token da Meta no workflow.' : 'O webhook respondeu com erro '+res.status+'. Confira se o workflow está ativo.');
-    const data=await res.json();
+    const txt=await res.text();
+    if(!txt.trim()) throw new Error('O n8n respondeu vazio: o workflow parou antes do nó "Responder painel". Abra a aba Executions do workflow e veja em qual nó a execução parou.');
+    let data; try{ data=JSON.parse(txt); }catch{ throw new Error('O n8n respondeu algo que não é JSON: '+txt.slice(0,200)); }
     const body=Array.isArray(data)?data[0]:data;
     if(!body || !Array.isArray(body.numeros)) throw new Error('A resposta do n8n veio num formato inesperado.');
     rows=body.numeros; lastSync=body.atualizado_em?new Date(body.atualizado_em):new Date();
@@ -278,8 +278,8 @@ function exportXlsx(){
   ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:headers.length-1}})};
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Números');
   const m=new Map(); list.forEach(r=>{ const k=(r.categoria||'')+'|'+(r.cliente||'')+'|'+bmKey(r)+'|'+wabaKey(r); if(!m.has(k)) m.set(k,{r,n:0}); if(r.phone_number_id) m.get(k).n++; });
-  const res=[['Categoria','Cliente','BM','ID do portfólio empresarial','WABA','WABA ID','Vínculo','Qtd. de números'], ...[...m.values()].map(({r,n})=>[r.categoria||'',r.cliente||'',r.bm_nome||'',r.bm_id||'',r.waba_nome||'',r.waba_id||'',r.waba_vinculo||'',n])];
-  const ws2=XLSX.utils.aoa_to_sheet(res); ws2['!cols']=[{wch:16},{wch:24},{wch:30},{wch:26},{wch:30},{wch:22},{wch:14},{wch:16}];
+  const res=[['Categoria','Cliente','BM','ID do portfólio empresarial','WABA','WABA ID','Qtd. de números'], ...[...m.values()].map(({r,n})=>[r.categoria||'',r.cliente||'',r.bm_nome||'',r.bm_id||'',r.waba_nome||'',r.waba_id||'',n])];
+  const ws2=XLSX.utils.aoa_to_sheet(res); ws2['!cols']=[{wch:16},{wch:24},{wch:30},{wch:26},{wch:30},{wch:22},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws2,'Resumo por WABA');
   const d=new Date(), stamp=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   XLSX.writeFile(wb,`numeros-whatsapp-bm-waba-${stamp}.xlsx`);
