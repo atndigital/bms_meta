@@ -40,7 +40,19 @@ h1{font-size:1.75rem;line-height:1.15;margin:0 0 6px;font-weight:700;letter-spac
 input,select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;width:100%}
 textarea{resize:vertical;min-height:64px}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
-.toolbar select{width:auto;max-width:220px}
+.ms{position:relative}
+.ms-btn{font-weight:500;min-width:160px;max-width:230px;text-align:left;overflow:hidden;text-overflow:ellipsis;padding-right:30px;position:relative}
+.ms-btn::after{content:"";position:absolute;right:13px;top:50%;width:6px;height:6px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg)}
+.ms-btn.on{border-color:var(--brand);color:var(--brand);font-weight:600}
+.ms-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,.18);width:max(260px,100%);max-width:min(360px,calc(100vw - 24px));padding:8px}
+.ms-head input{margin-bottom:6px}
+.ms-acts{display:flex;gap:6px;margin-bottom:6px}
+.ms-acts button{padding:5px 10px;font-size:.85rem;font-weight:500}
+.ms-list{max-height:300px;overflow:auto}
+label.ms-opt{display:flex;gap:9px;align-items:center;padding:6px;border-radius:6px;cursor:pointer;color:var(--ink);font-size:.9rem;font-weight:400}
+.ms-opt:hover{background:var(--hover)}
+label.ms-opt input{width:auto;margin:0;accent-color:var(--brand);flex:none}
+.ms-empty{padding:8px;color:var(--muted);font-size:.9rem}
 button{font:inherit;font-weight:600;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);white-space:nowrap}
 button:hover{background:var(--hover)}
 button.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
@@ -83,10 +95,13 @@ label input,label select,label textarea{margin-top:4px}
 .catbtn:hover{background:var(--soft)}
 .catbtn:focus-visible{outline:2px solid var(--brand)}
 .catbtn.manual::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--brand);margin-left:6px;vertical-align:middle}
+.regra{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.regra button{padding:8px 10px}
+.sub{font-weight:700;color:var(--brand);margin:16px 0 4px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
-@media (max-width:640px){main{padding:18px 12px 32px}h1{font-size:1.4rem}.toolbar select{max-width:none;flex:1 1 45%}}
+@media (max-width:640px){main{padding:18px 12px 32px}h1{font-size:1.4rem}.ms{flex:1 1 45%}.ms-btn{max-width:none;width:100%}}
 </style>
 </head>
 <body>
@@ -97,13 +112,11 @@ label input,label select,label textarea{margin-top:4px}
 
   <div class="toolbar">
     <input class="grow" id="q" type="search" placeholder="Buscar por categoria, número, ID…" aria-label="Buscar">
-    <select id="fCat" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select>
-    <select id="fBm" aria-label="Filtrar por BM"><option value="">Todas as BMs</option></select>
-    <select id="fWaba" aria-label="Filtrar por WABA"><option value="">Todas as WABAs</option></select>
-    <select id="fQual" aria-label="Filtrar por qualidade">
-      <option value="">Qualquer qualidade</option><option value="ok">Alta</option><option value="warn">Média</option><option value="bad">Baixa</option>
-    </select>
-    <select id="fStatus" aria-label="Filtrar por status"><option value="">Qualquer status</option></select>
+    <div id="fCat"></div>
+    <div id="fBm"></div>
+    <div id="fWaba"></div>
+    <div id="fQual"></div>
+    <div id="fStatus"></div>
     <button class="primary" id="btnRefresh">Atualizar</button>
     <button id="btnExport">Exportar Excel</button>
     <button id="btnConfig" title="Prefixos removidos do nome da WABA">Configurar</button>
@@ -125,7 +138,12 @@ label input,label select,label textarea{margin-top:4px}
   <form class="dlg" id="form">
     <h2>Configurações</h2>
     <p class="hint">Fica salvo só neste navegador.</p>
-        <label style="margin-top:10px">Prefixos removidos do nome da WABA (separados por vírgula)<input name="prefixos" placeholder="2cx, atn"></label>
+    <p class="sub">Regras de categoria</p>
+    <p class="hint" style="margin:0 0 10px">Toda WABA com o termo no nome vai para a categoria indicada. Vale a primeira regra da lista que bater.</p>
+    <div id="regras"></div>
+    <button type="button" id="btnAddRegra">Adicionar regra</button>
+    <p class="sub">Limpeza do nome</p>
+    <label>Prefixos removidos do nome da WABA (separados por vírgula)<input name="prefixos" placeholder="2cx, atn"></label>
     <div class="dlg-actions" style="margin-top:16px"><span class="sp"></span>
       <button type="button" id="btnCancel">Cancelar</button>
       <button type="submit" class="primary">Salvar e atualizar</button>
@@ -139,7 +157,8 @@ label input,label select,label textarea{margin-top:4px}
     <p class="hint" id="catWaba"></p>
     <label>Categoria<input name="categoria" list="dlCats" required></label>
     <datalist id="dlCats"></datalist>
-    <p class="hint" style="margin-top:10px">Vale para todos os números desta WABA. Fica salvo neste navegador.</p>
+    <label style="margin-top:10px">Aplicar a todas as WABAs com este termo no nome (opcional)<input name="termo" placeholder="ex.: tim"></label>
+    <p class="hint" style="margin-top:10px">Sem termo, vale só para esta WABA. Fica salvo neste navegador.</p>
     <div class="dlg-actions">
       <button type="button" class="danger" id="catAuto">Voltar ao automático</button>
       <span class="sp"></span>
@@ -185,7 +204,7 @@ const val = (r,f) => f.map ? tr(f.map, r[f.key]) : (r[f.key] ?? '');
 const store = { get(k){ try{return localStorage.getItem(k);}catch{return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch{} } };
 
 const WEBHOOK_URL = 'https://n8n.atnctc.com.br/webhook/bms-numeros-whatsapp';
-const CHAVE = 'COLE_SUA_CHAVE_AQUI';
+const CHAVE = '362541';
 let rows = [], lastSync = null, loading = false, catWabaId = null;
 
 // ---------- Categorias (nome da WABA limpo + correções manuais) ----------
@@ -201,9 +220,19 @@ function limpar(nome){
   }while(n!==antes);
   return n || String(nome||'').trim();
 }
+const getRegras = () => { const v=store.get('bmw_regras'); if(v===null) return [{termo:'tim',categoria:'TIM'}]; try{ return JSON.parse(v)||[]; }catch{ return []; } };
+const normTxt = x => String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function regraDe(nome){
+  const n=normTxt(nome);
+  return getRegras().find(r=>r.termo && new RegExp('(^|[^a-z0-9])'+escRe(normTxt(r.termo))+'([^a-z0-9]|$)').test(n));
+}
 function applyCats(){
   const cats=getCats();
-  rows.forEach(r=>{ const m=r.waba_id && cats[r.waba_id]; r.categoria = m || limpar(r.waba_nome) || 'Sem WABA'; r._catManual=!!m; });
+  rows.forEach(r=>{
+    const m=r.waba_id && cats[r.waba_id], rg=!m && regraDe(r.waba_nome);
+    r.categoria = m || (rg && rg.categoria) || limpar(r.waba_nome) || 'Sem WABA';
+    r._catManual=!!m || !!rg;
+  });
 }
 
 function toast(msg, ms=2600){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._h); toast._h=setTimeout(()=>t.classList.remove('show'), ms); }
@@ -214,29 +243,77 @@ const bmKey = r=>r.bm_id||r.bm_nome, wabaKey = r=>r.waba_id||r.waba_nome;
 
 (function(){ const h=$('thead'); FIELDS.forEach(f=>{ const th=document.createElement('th'); th.textContent=f.label; if(f.grp) th.className='grp'; h.appendChild(th); }); })();
 
+// ---------- Filtros de múltipla escolha ----------
+const MS={}; let msOpen=null;
+function makeMS(id, allLabel, plural, search){
+  const root=$(id); root.className='ms';
+  const btn=document.createElement('button'); btn.type='button'; btn.className='ms-btn'; btn.setAttribute('aria-haspopup','true'); btn.setAttribute('aria-expanded','false'); btn.setAttribute('aria-label','Filtrar: '+allLabel);
+  const pop=document.createElement('div'); pop.className='ms-pop'; pop.hidden=true;
+  const head=document.createElement('div'); head.className='ms-head';
+  let q=null; if(search){ q=document.createElement('input'); q.type='search'; q.placeholder='Procurar…'; q.addEventListener('input',()=>draw()); head.appendChild(q); }
+  const acts=document.createElement('div'); acts.className='ms-acts';
+  const bAll=document.createElement('button'); bAll.type='button'; bAll.textContent='Marcar todas';
+  const bNone=document.createElement('button'); bNone.type='button'; bNone.textContent='Limpar';
+  acts.append(bAll,bNone); head.appendChild(acts);
+  const list=document.createElement('div'); list.className='ms-list';
+  pop.append(head,list); root.append(btn,pop);
+  const st={sel:new Set(), opts:[]};
+  const visible=()=>{ const f=q?norm(q.value):''; return st.opts.filter(([v,l])=>!f||norm(l).includes(f)); };
+  function label(){ const n=st.sel.size; btn.textContent = !n ? allLabel : n===1 ? ((st.opts.find(o=>o[0]===[...st.sel][0])||[,''])[1]||allLabel) : n+' '+plural; btn.classList.toggle('on',n>0); }
+  function draw(){
+    const top=list.scrollTop, vis=visible();
+    list.replaceChildren(...vis.map(([v,l])=>{
+      const lab=document.createElement('label'); lab.className='ms-opt';
+      const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=st.sel.has(v);
+      cb.addEventListener('change',()=>{ cb.checked?st.sel.add(v):st.sel.delete(v); label(); render(); });
+      const sp=document.createElement('span'); sp.textContent=l||'(sem nome)'; lab.append(cb,sp); return lab;
+    }));
+    if(!vis.length){ const e=document.createElement('div'); e.className='ms-empty'; e.textContent='Nada encontrado'; list.appendChild(e); }
+    list.scrollTop=top;
+  }
+  function close(){ pop.hidden=true; btn.setAttribute('aria-expanded','false'); if(msOpen===st) msOpen=null; }
+  function open(){ if(msOpen) msOpen.close(); pop.hidden=false; btn.setAttribute('aria-expanded','true'); msOpen=st; if(q) q.value=''; draw(); (q||list.querySelector('input'))?.focus(); }
+  btn.addEventListener('click',()=> pop.hidden ? open() : close());
+  bAll.addEventListener('click',()=>{ visible().forEach(([v])=>st.sel.add(v)); label(); draw(); render(); });
+  bNone.addEventListener('click',()=>{ st.sel.clear(); label(); draw(); render(); });
+  root.addEventListener('keydown',e=>{ if(e.key==='Escape'){ close(); btn.focus(); } });
+  Object.assign(st,{
+    close,
+    has:v=>!st.sel.size||st.sel.has(v),
+    active:()=>st.sel.size>0,
+    setOptions(entries){ st.opts=entries; const ok=new Set(entries.map(e=>e[0])); [...st.sel].forEach(v=>{ if(!ok.has(v)) st.sel.delete(v); }); label(); if(!pop.hidden) draw(); }
+  });
+  label(); MS[id]=st; return st;
+}
+document.addEventListener('click',e=>{ if(msOpen && !e.target.closest('.ms')) msOpen.close(); });
+makeMS('fCat','Todas as categorias','categorias',true);
+makeMS('fBm','Todas as BMs','BMs',true);
+makeMS('fWaba','Todas as WABAs','WABAs',true);
+makeMS('fQual','Qualquer qualidade','qualidades',false).setOptions([['ok','Alta'],['warn','Média'],['bad','Baixa'],['none','Sem classificação']]);
+makeMS('fStatus','Qualquer status','status',false);
+const qualKey = r => qualClass(r.qualidade)||'none';
+
 function filtered(){
-  const q=norm($('q').value), fcat=$('fCat').value, fb=$('fBm').value, fw=$('fWaba').value, fq=$('fQual').value, fs=$('fStatus').value;
+  const q=norm($('q').value);
   return rows.slice().sort((a,b)=>cmp(a.categoria,b.categoria)||cmp(a.bm_nome,b.bm_nome)||cmp(a.bm_id,b.bm_id)||cmp(a.waba_nome,b.waba_nome)||cmp(a.numero,b.numero)).filter(r=>{
-    if(fcat && (r.categoria||'')!==fcat) return false;
-    if(fb && bmKey(r)!==fb) return false;
-    if(fw && wabaKey(r)!==fw) return false;
-    if(fq && qualClass(r.qualidade)!==fq) return false;
-    if(fs && (r.status||'')!==fs) return false;
+    if(!MS.fCat.has(r.categoria||'')) return false;
+    if(!MS.fBm.has(bmKey(r))) return false;
+    if(!MS.fWaba.has(wabaKey(r))) return false;
+    if(!MS.fQual.has(qualKey(r))) return false;
+    if(!MS.fStatus.has(r.status||'')) return false;
     if(q && !FIELDS.some(f=>norm(val(r,f)).includes(q))) return false;
     return true;
   });
 }
-const isFiltering = () => ['q','fCat','fBm','fWaba','fQual','fStatus'].some(id=>$(id).value);
+const isFiltering = () => !!$('q').value || Object.values(MS).some(m=>m.active());
 function uniq(list,keyFn,labelFn){ const m=new Map(); list.forEach(r=>{const k=keyFn(r); if(k&&!m.has(k)) m.set(k,labelFn(r));}); return [...m.entries()].sort((a,b)=>cmp(a[1],b[1])); }
-function fillSelect(sel,entries,allLabel){ const cur=sel.value; sel.replaceChildren(new Option(allLabel,'')); entries.forEach(([v,l])=>sel.appendChild(new Option(l,v))); sel.value=entries.some(e=>e[0]===cur)?cur:''; }
 
 function render(){
-  fillSelect($('fCat'), uniq(rows,r=>r.categoria,r=>r.categoria), 'Todas as categorias');
-  const fcat=$('fCat').value, inCat=rows.filter(r=>!fcat||r.categoria===fcat);
-  fillSelect($('fBm'), uniq(inCat,bmKey,r=>r.bm_nome||r.bm_id), 'Todas as BMs');
-  const fb=$('fBm').value;
-  fillSelect($('fWaba'), uniq(inCat.filter(r=>!fb||bmKey(r)===fb),wabaKey,r=>r.waba_nome||r.waba_id), 'Todas as WABAs');
-  fillSelect($('fStatus'), uniq(rows,r=>r.status,r=>tr(T.status,r.status)), 'Qualquer status');
+  MS.fCat.setOptions(uniq(rows,r=>r.categoria,r=>r.categoria));
+  const inCat=rows.filter(r=>MS.fCat.has(r.categoria||''));
+  MS.fBm.setOptions(uniq(inCat,bmKey,r=>r.bm_nome||r.bm_id));
+  MS.fWaba.setOptions(uniq(inCat.filter(r=>MS.fBm.has(bmKey(r))),wabaKey,r=>r.waba_nome||r.waba_id));
+  MS.fStatus.setOptions(uniq(rows,r=>r.status,r=>tr(T.status,r.status)));
 
   const nums = rows.filter(r=>r.phone_number_id);
   const s=$('summary'); s.replaceChildren();
@@ -318,20 +395,40 @@ function exportXlsx(){
   XLSX.writeFile(wb,`numeros-whatsapp-bm-waba-${stamp}.xlsx`);
 }
 
-function openConfig(){ const f=$('form'); f.elements.prefixos.value=getPrefixos().join(', '); $('dlg').showModal(); }
-$('form').addEventListener('submit',e=>{ e.preventDefault(); const f=e.target; store.set('bmw_prefixos',f.elements.prefixos.value); applyCats(); $('dlg').close(); refresh(); });
+function openConfig(){ const f=$('form'); f.elements.prefixos.value=getPrefixos().join(', '); renderRegras(getRegras()); $('dlg').showModal(); }
+$('form').addEventListener('submit',e=>{ e.preventDefault(); const f=e.target; store.set('bmw_prefixos',f.elements.prefixos.value); store.set('bmw_regras',JSON.stringify(lerRegras())); applyCats(); $('dlg').close(); refresh(); });
 $('btnCancel').addEventListener('click',()=>$('dlg').close());
+
+function linhaRegra(r={termo:'',categoria:''}){
+  const d=document.createElement('div'); d.className='regra';
+  const t=document.createElement('input'); t.placeholder='Termo no nome (ex.: tim)'; t.value=r.termo; t.dataset.k='termo'; t.setAttribute('aria-label','Termo');
+  const c=document.createElement('input'); c.placeholder='Categoria (ex.: TIM)'; c.value=r.categoria; c.dataset.k='categoria'; c.setAttribute('list','dlCats'); c.setAttribute('aria-label','Categoria');
+  const x=document.createElement('button'); x.type='button'; x.className='danger'; x.textContent='Remover'; x.addEventListener('click',()=>d.remove());
+  d.append(t,c,x); return d;
+}
+function fillCatList(){ $('dlCats').replaceChildren(...[...new Set(rows.map(x=>x.categoria).filter(Boolean))].sort(cmp).map(v=>{const o=document.createElement('option'); o.value=v; return o;})); }
+function renderRegras(list){ fillCatList(); $('regras').replaceChildren(...list.map(linhaRegra)); }
+function lerRegras(){ return [...$('regras').children].map(d=>({termo:d.querySelector('[data-k=termo]').value.trim(), categoria:d.querySelector('[data-k=categoria]').value.trim()})).filter(r=>r.termo&&r.categoria); }
+$('btnAddRegra').addEventListener('click',()=>{ fillCatList(); $('regras').appendChild(linhaRegra()); $('regras').lastElementChild.querySelector('input').focus(); });
 
 function openCat(r){
   catWabaId=r.waba_id;
   $('catWaba').textContent=(r.waba_nome||'WABA')+' · '+r.waba_id;
-  const dl=$('dlCats'); dl.replaceChildren(...[...new Set(rows.map(x=>x.categoria).filter(Boolean))].sort(cmp).map(v=>{const o=document.createElement('option'); o.value=v; return o;}));
+  fillCatList();
+  $('formCat').elements.termo.value='';
   $('formCat').elements.categoria.value=r.categoria||'';
-  $('catAuto').hidden=!r._catManual;
+  $('catAuto').hidden=!getCats()[r.waba_id];
   $('dlgCat').showModal();
 }
 function saveCats(cats){ store.set('bmw_cats',JSON.stringify(cats)); applyCats(); render(); }
 $('formCat').addEventListener('submit',e=>{ e.preventDefault(); const v=e.target.elements.categoria.value.trim(); if(!v||!catWabaId) return;
+  const termo=e.target.elements.termo.value.trim();
+  if(termo){
+    const regras=getRegras().filter(r=>normTxt(r.termo)!==normTxt(termo)); regras.unshift({termo,categoria:v});
+    store.set('bmw_regras',JSON.stringify(regras));
+    const cats=getCats(); delete cats[catWabaId]; saveCats(cats);
+    $('dlgCat').close(); toast('Regra criada: WABAs com "'+termo+'" vão para '+v+'.'); return;
+  }
   const cats=getCats(); const w=rows.find(x=>x.waba_id===catWabaId);
   if(w && v===limpar(w.waba_nome)) delete cats[catWabaId]; else cats[catWabaId]=v;
   saveCats(cats); $('dlgCat').close(); toast('Categoria salva.'); });
@@ -341,7 +438,7 @@ $('btnConfig').addEventListener('click',openConfig);
 $('btnConfig2').addEventListener('click',openConfig);
 $('btnRefresh').addEventListener('click',refresh);
 $('btnExport').addEventListener('click',exportXlsx);
-['q','fCat','fBm','fWaba','fQual','fStatus'].forEach(id=>$(id).addEventListener(id==='q'?'input':'change',render));
+$('q').addEventListener('input',render);
 
 try{ const c=JSON.parse(store.get('bmw_cache')||'null'); if(c){ rows=c.rows||[]; applyCats(); lastSync=c.lastSync?new Date(c.lastSync):null; } }catch{}
 render();
