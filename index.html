@@ -106,7 +106,7 @@ label input,label select,label textarea{margin-top:4px}
     <select id="fStatus" aria-label="Filtrar por status"><option value="">Qualquer status</option></select>
     <button class="primary" id="btnRefresh">Atualizar</button>
     <button id="btnExport">Exportar Excel</button>
-    <button id="btnConfig" title="Endereço do webhook e chave">Configurar</button>
+    <button id="btnConfig" title="Prefixos removidos do nome da WABA">Configurar</button>
   </div>
 
   <div class="tablewrap">
@@ -123,13 +123,9 @@ label input,label select,label textarea{margin-top:4px}
 
 <dialog id="dlg">
   <form class="dlg" id="form">
-    <h2>Conexão com o n8n</h2>
+    <h2>Configurações</h2>
     <p class="hint">Fica salvo só neste navegador.</p>
-    <div class="grid">
-      <label>URL do webhook<input name="url" type="url" required placeholder="https://n8n.atnctc.com.br/webhook/bms-numeros-whatsapp"></label>
-      <label>Chave<input name="chave" type="password" required autocomplete="off"></label>
-    </div>
-    <label style="margin-top:10px">Prefixos removidos do nome da WABA (separados por vírgula)<input name="prefixos" placeholder="2cx, atn"></label>
+        <label style="margin-top:10px">Prefixos removidos do nome da WABA (separados por vírgula)<input name="prefixos" placeholder="2cx, atn"></label>
     <div class="dlg-actions" style="margin-top:16px"><span class="sp"></span>
       <button type="button" id="btnCancel">Cancelar</button>
       <button type="submit" class="primary">Salvar e atualizar</button>
@@ -188,6 +184,8 @@ const $ = id => document.getElementById(id);
 const val = (r,f) => f.map ? tr(f.map, r[f.key]) : (r[f.key] ?? '');
 const store = { get(k){ try{return localStorage.getItem(k);}catch{return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch{} } };
 
+const WEBHOOK_URL = 'https://n8n.atnctc.com.br/webhook/bms-numeros-whatsapp';
+const CHAVE = 'COLE_SUA_CHAVE_AQUI';
 let rows = [], lastSync = null, loading = false, catWabaId = null;
 
 // ---------- Categorias (nome da WABA limpo + correções manuais) ----------
@@ -268,10 +266,10 @@ function render(){
   });
   $('tbody').replaceChildren(frag);
 
-  const configured = !!(store.get('bmw_url') && store.get('bmw_chave'));
+  const configured = true;
   $('empty').hidden = !!list.length;
   $('emptyActions').hidden = configured;
-  $('emptyMsg').textContent = !configured ? 'Informe o endereço do webhook do n8n e a chave para buscar os números na Meta.'
+  $('emptyMsg').textContent = !configured ? 'Informe a chave para buscar os números na Meta.'
     : loading ? 'Buscando na Meta…' : rows.length ? 'Nenhum número corresponde à busca ou aos filtros.' : 'Nenhum dado ainda. Clique em Atualizar.';
   $('btnExport').textContent = isFiltering() && list.length ? `Exportar ${list.length} em Excel` : 'Exportar Excel';
   $('btnExport').disabled = !list.length;
@@ -282,8 +280,7 @@ function render(){
 async function copy(v){ try{ await navigator.clipboard.writeText(v); toast('Copiado: '+v); }catch{ toast('Não foi possível copiar.'); } }
 
 async function refresh(){
-  const url=store.get('bmw_url'), chave=store.get('bmw_chave');
-  if(!url||!chave){ openConfig(); return; }
+  const url=WEBHOOK_URL, chave=CHAVE;
   loading=true; render();
   try{
     const u=new URL(url); u.searchParams.set('chave',chave);
@@ -321,8 +318,8 @@ function exportXlsx(){
   XLSX.writeFile(wb,`numeros-whatsapp-bm-waba-${stamp}.xlsx`);
 }
 
-function openConfig(){ const f=$('form'); f.elements.url.value=store.get('bmw_url')||''; f.elements.chave.value=store.get('bmw_chave')||''; f.elements.prefixos.value=getPrefixos().join(', '); $('dlg').showModal(); }
-$('form').addEventListener('submit',e=>{ e.preventDefault(); const f=e.target; store.set('bmw_url',f.elements.url.value.trim()); store.set('bmw_chave',f.elements.chave.value.trim()); store.set('bmw_prefixos',f.elements.prefixos.value); applyCats(); $('dlg').close(); refresh(); });
+function openConfig(){ const f=$('form'); f.elements.prefixos.value=getPrefixos().join(', '); $('dlg').showModal(); }
+$('form').addEventListener('submit',e=>{ e.preventDefault(); const f=e.target; store.set('bmw_prefixos',f.elements.prefixos.value); applyCats(); $('dlg').close(); refresh(); });
 $('btnCancel').addEventListener('click',()=>$('dlg').close());
 
 function openCat(r){
@@ -348,7 +345,7 @@ $('btnExport').addEventListener('click',exportXlsx);
 
 try{ const c=JSON.parse(store.get('bmw_cache')||'null'); if(c){ rows=c.rows||[]; applyCats(); lastSync=c.lastSync?new Date(c.lastSync):null; } }catch{}
 render();
-if(store.get('bmw_url') && store.get('bmw_chave')) refresh();
+refresh();
 </script>
 </body>
 </html>
