@@ -98,6 +98,15 @@ label input,label select,label textarea{margin-top:4px}
 .regra{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
 .regra button{padding:8px 10px}
 .sub{font-weight:700;color:var(--brand);margin:16px 0 4px}
+.alerta{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:#C62828;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.alerta-in{max-width:1600px;margin:0 auto;padding:12px 20px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.alerta strong{font-size:1.05rem;font-weight:700}
+.alerta-lista{flex:1 1 320px;font-size:.9rem;opacity:.95;overflow-wrap:anywhere}
+.alerta button{background:#fff;color:#C62828;border:none;font-weight:700;padding:7px 14px}
+.alerta button:hover{background:#FDECEA}
+tbody tr.baixa td{background:var(--bad-bg)}
+tbody tr.baixa:hover td{background:var(--bad-bg);filter:brightness(.97)}
+tbody tr.baixa td:first-child{box-shadow:inset 4px 0 0 var(--bad)}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-weight:500;max-width:calc(100% - 32px);opacity:0;pointer-events:none;transition:opacity .2s}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -105,6 +114,13 @@ label input,label select,label textarea{margin-top:4px}
 </style>
 </head>
 <body>
+<div class="alerta" id="alerta" role="alert" hidden>
+  <div class="alerta-in">
+    <strong id="alertaTit"></strong>
+    <span class="alerta-lista" id="alertaLista"></span>
+    <button type="button" id="alertaVer">Mostrar só estes</button>
+  </div>
+</div>
 <main>
   <h1>Números WhatsApp por BM</h1>
   <p class="summary" id="summary">Carregando…</p>
@@ -175,7 +191,7 @@ const T = {
   qual:{GREEN:'Alta',YELLOW:'Média',RED:'Baixa',UNKNOWN:'Desconhecida'},
   limite:{TIER_50:'50',TIER_250:'250',TIER_1K:'1K',TIER_2K:'2K',TIER_10K:'10K',TIER_100K:'100K',TIER_UNLIMITED:'Ilimitado'},
   status:{CONNECTED:'Conectado',PENDING:'Pendente',FLAGGED:'Sinalizado',RESTRICTED:'Restrito',BANNED:'Banido',DISCONNECTED:'Desconectado',MIGRATED:'Migrado',DELETED:'Excluído',RATE_LIMITED:'Limitado',UNVERIFIED:'Não verificado',UNKNOWN:'Desconhecido'},
-  nome:{APPROVED:'Aprovado',AVAILABLE_WITHOUT_REVIEW:'Disponível sem revisão',PENDING_REVIEW:'Em revisão',DECLINED:'Recusado',EXPIRED:'Expirado',NONE:'Nenhum'},
+  nome:{APPROVED:'Aprovado',AVAILABLE_WITHOUT_REVIEW:'Disponível sem revisão',PENDING_REVIEW:'Em revisão',DECLINED:'Recusado',EXPIRED:'Expirado',NONE:'Nenhum',NON_EXISTS:'Inexistente'},
   bmv:{verified:'Verificada',not_verified:'Não verificada',pending:'Pendente',pending_submission:'Pendente',failed:'Reprovada',rejected:'Reprovada',expired:'Expirada'},
   waba:{APPROVED:'Aprovada',PENDING:'Pendente',REJECTED:'Reprovada'},
   plat:{CLOUD_API:'Cloud API',ON_PREMISE:'On-premise',NOT_APPLICABLE:'N/A'}
@@ -281,6 +297,8 @@ function makeMS(id, allLabel, plural, search){
     close,
     has:v=>!st.sel.size||st.sel.has(v),
     active:()=>st.sel.size>0,
+    set(values){ st.sel=new Set(values); label(); if(!pop.hidden) draw(); },
+    clear(){ st.sel.clear(); label(); },
     setOptions(entries){ st.opts=entries; const ok=new Set(entries.map(e=>e[0])); [...st.sel].forEach(v=>{ if(!ok.has(v)) st.sel.delete(v); }); label(); if(!pop.hidden) draw(); }
   });
   label(); MS[id]=st; return st;
@@ -315,6 +333,13 @@ function render(){
   MS.fWaba.setOptions(uniq(inCat.filter(r=>MS.fBm.has(bmKey(r))),wabaKey,r=>r.waba_nome||r.waba_id));
   MS.fStatus.setOptions(uniq(rows,r=>r.status,r=>tr(T.status,r.status)));
 
+  const baixos = rows.filter(r=>r.phone_number_id && qualKey(r)==='bad').sort((a,b)=>cmp(a.categoria,b.categoria)||cmp(a.numero,b.numero));
+  $('alerta').hidden = !baixos.length;
+  if(baixos.length){
+    $('alertaTit').textContent = baixos.length===1 ? '⚠ 1 número com qualidade BAIXA' : `⚠ ${baixos.length} números com qualidade BAIXA`;
+    const itens=baixos.slice(0,8).map(r=>`${r.numero||r.phone_number_id} (${r.categoria||r.waba_nome||r.waba_id})`);
+    $('alertaLista').textContent = itens.join(' · ') + (baixos.length>8 ? ` · e mais ${baixos.length-8}` : '');
+  }
   const nums = rows.filter(r=>r.phone_number_id);
   const s=$('summary'); s.replaceChildren();
   if(rows.length){
@@ -330,6 +355,7 @@ function render(){
   list.forEach(r=>{
     const row=document.createElement('tr'); row.style.cursor='default';
     if(prev!==null && bmKey(r)!==prev) row.className='newbm'; prev=bmKey(r);
+    if(qualKey(r)==='bad') row.classList.add('baixa');
     FIELDS.forEach(f=>{
       const td=document.createElement('td'), v=val(r,f);
       if(f.grp) td.classList.add('grp'); if(f.cls) td.classList.add(f.cls);
@@ -439,6 +465,7 @@ $('btnConfig2').addEventListener('click',openConfig);
 $('btnRefresh').addEventListener('click',refresh);
 $('btnExport').addEventListener('click',exportXlsx);
 $('q').addEventListener('input',render);
+$('alertaVer').addEventListener('click',()=>{ $('q').value=''; Object.values(MS).forEach(m=>m.clear()); MS.fQual.set(['bad']); render(); });
 
 try{ const c=JSON.parse(store.get('bmw_cache')||'null'); if(c){ rows=c.rows||[]; applyCats(); lastSync=c.lastSync?new Date(c.lastSync):null; } }catch{}
 render();
